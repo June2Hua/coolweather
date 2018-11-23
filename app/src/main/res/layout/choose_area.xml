@@ -20,8 +20,8 @@
             android:layout_alignParentLeft="true"
             android:layout_centerVertical="true"
             android:background="@drawable/backup"
-            android:layout_width="50dp"
-            android:layout_height="50dp" />
+            android:layout_width="66dp"
+            android:layout_height="66dp" />
     </RelativeLayout>
     <ListView
         android:id="@+id/list_view"
