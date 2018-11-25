@@ -4,13 +4,16 @@ import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.bumptech.glide.util.Util;
 import com.example.coolweather.gson.Forecast;
 import com.example.coolweather.gson.Weather;
@@ -26,6 +29,7 @@ import okhttp3.Callback;
 import okhttp3.Response;
 
 public class WeatherActivity extends AppCompatActivity {
+    private static final String TAG="WeatherActivity";
     private ScrollView weatherLayout;
     private TextView titleCity;
     private TextView titleUpdateTime;
@@ -37,6 +41,7 @@ public class WeatherActivity extends AppCompatActivity {
     private TextView comfortText;
     private TextView carWashText;
     private TextView sportText;
+    private ImageView bingPicImg;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,8 +57,15 @@ public class WeatherActivity extends AppCompatActivity {
         comfortText= (TextView) findViewById(R.id.confort_text);
         carWashText= (TextView) findViewById(R.id.car_wash_text);
         sportText= (TextView) findViewById(R.id.sport_text);
+        bingPicImg= (ImageView) findViewById(R.id.bing_pic_img);
         SharedPreferences preferences= PreferenceManager.getDefaultSharedPreferences(this);
         String weatherString=preferences.getString("weather",null);
+        String bingPic=preferences.getString("bing_pic",null);
+        if(bingPic!=null){
+            Glide.with(this).load(bingPic).into(bingPicImg);
+        }else{
+            loadBingPic();
+        }
         if(weatherString!=null){
             Weather weather= Utility.handleWeatherResponse(weatherString);
             showWeatherInfo(weather);
@@ -64,8 +76,33 @@ public class WeatherActivity extends AppCompatActivity {
         }
     }
 
+    //加载来自服务器上的图片
+    private void loadBingPic(){
+        String requestBingPic="http://guolin.tech/api/bing_pic";
+        HttpUtil.sendOkHttpRequest(requestBingPic, new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                final String bingPic=response.body().string();
+                SharedPreferences.Editor editor=PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this).edit();
+                editor.putString("bing_pic",bingPic);
+                editor.apply();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Glide.with(WeatherActivity.this).load(bingPic).into(bingPicImg);
+                    }
+                });
+            }
+        });
+    }
     //根据Intent传来的Id获取该城市的信息
     public void requestWeather(final String weatherId){
+
         String weatherUrl="http://guolin.tech/api/weather?cityid="+weatherId+"&key=b160a18e54af4f93869ed00457070194";
         HttpUtil.sendOkHttpRequest(weatherUrl, new Callback() {
             @Override
@@ -74,6 +111,7 @@ public class WeatherActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         Toast.makeText(WeatherActivity.this, "获取天气失败", Toast.LENGTH_SHORT).show();
+                        Log.i(TAG, "run: 运行到了onFailure");
                     }
                 });
             }
@@ -90,13 +128,16 @@ public class WeatherActivity extends AppCompatActivity {
                             editor.putString("weather",responseText);
                             editor.apply();
                             showWeatherInfo(weather);
+                            Log.i(TAG, "run: 运行到了onResponse中的if语句");
                         }else{
                             Toast.makeText(WeatherActivity.this, "获取天气信息失败", Toast.LENGTH_SHORT).show();
+                            Log.i(TAG, "run: 运行到了onResponse中的else语句");
                         }
                     }
                 });
             }
         });
+        loadBingPic();
     }
 
     //处理Weather类的所用数据，并显示到UI中
